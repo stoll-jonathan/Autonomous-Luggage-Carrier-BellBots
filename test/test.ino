@@ -151,6 +151,80 @@ void loop() {
 }
 
 
+// Demonstration Programs
+void leftOnDetection(long duration[], long inches[]) {
+  // TASK: move forward until an object is detected, then turn left 90° and stop
+
+  if (forwardPathClear(duration, inches)) {
+    Serial.println("Free to move");
+
+    moveForward(duration, inches);
+  }
+  else {
+    Serial.print("Object detected ");
+    Serial.print(inches[0]);
+    Serial.println("in away");
+
+    turnLeft();
+
+    disabled = true; // return to program selection menu
+  }
+}
+
+void rightOnDetection(long duration[], long inches[]) {
+  // TASK: move forward until an object is detected, then turn right 90° and stop
+
+  if (forwardPathClear(duration, inches)) {
+    Serial.println("Free to move");
+
+    moveForward(duration, inches);
+  }
+  else {
+    Serial.print("Object detected ");
+    Serial.print(inches[0]);
+    Serial.println("in away");
+
+    turnRight();
+
+    disabled = true; // return to program selection menu
+  }
+}
+
+void stopOnDetection(long duration[], long inches[]) {
+  // TASK: move forward until an object is detected, then stop
+
+  if (forwardPathClear(duration, inches)) {
+    Serial.println("Free to move");
+
+    moveForward(duration, inches);
+  }
+  else {
+    Serial.print("Object detected ");
+    Serial.print(inches[0]);
+    Serial.println("in away");
+
+    stopCart();
+
+    disabled = true; // return to program selection menu
+  }
+}
+
+void forwardThen180(long duration[], long inches[]) {
+  // TASK: move forward for 10 seconds, do a 180° turn, drive back, and turn 180° again
+
+  moveForward(duration, inches);
+  delay(10000); // ms
+  turn180();
+
+  moveForward(duration, inches);
+  delay(10000);
+  turn180();
+
+  disabled = true; // return to program selection menu
+}
+
+
+// Helper Functions
 bool doorCodesAreEqual(char code1[], char code2[], int length) {
   for (int i = 0; i < length; i++) {
     if (code1[i] != code2[i]) 
@@ -263,6 +337,7 @@ void turnLeft() {
   analogWrite(PWM_PINS[1], rightBaseSpeed);
 
   delay(turnDuration);
+  stopCart();
 }
 
 void turnRight() {
@@ -274,6 +349,7 @@ void turnRight() {
   analogWrite(PWM_PINS[1], rightBaseSpeed/2);
 
   delay(turnDuration);
+  stopCart();
 }
 
 void turn180() {
@@ -285,10 +361,11 @@ void turn180() {
   analogWrite(PWM_PINS[1], rightBaseSpeed);
 
   delay(2*turnDuration);
+  stopCart();
 }
 
 
-// for testing purposes
+// For Testing Purposes
 void testSensors(long duration[], long inches[]) {
   readSensors(duration, inches);
 
