@@ -5,6 +5,7 @@
 // GENERAL SETUP
 bool DISABLED = true;
 
+
 // KEYPAD SETUP
 const int ROW_NUM = 4;
 const int COLUMN_NUM = 4;
@@ -24,8 +25,9 @@ const int CODE_LENGTH = 4;
 const unsigned long TIMEOUT_MS = 2000; // allow 2 seconds between keypresses before entry window resets
 
 const char correct_code[CODE_LENGTH] = {'1', '9', '7', '2'}; // hardcoded for demo purposes
-const char enable_program_code[CODE_LENGTH] = {'*', '*', '*', '*'};
 const char disable_program_code[CODE_LENGTH] = {'#', '#', '#', '#'};
+const char demo_program_codes[4][CODE_LENGTH] = { {'#', 'A', '1', '1'}, {'#', 'B', '2', '2'}, {'#', 'C', '3', '3'}, {'#', 'D', '4', '4'} };
+char curr_program_code[CODE_LENGTH];
 
 char entered_code[CODE_LENGTH];
 int code_index = 0;
@@ -45,9 +47,34 @@ const int turnDuration = 5000; // ms
 const int leftBaseSpeed 200;
 const int rightBaseSpeed = 225;
 
+
 // DOOR LOCK SETUP
 bool doorLocked = false;
 const int actuatorPins[2] = {3, 4};
+
+
+// Function Prototypes
+void leftOnDetection(long duration[], long inches[]);
+void rightOnDetection(long duration[], long inches[]);
+void stopOnDetection(long duration[], long inches[]);
+void forwardThen180(long duration[], long inches[]);
+
+bool doorCodesAreEqual(char code1[], char code2[], int length);
+void lockDoor();
+void unlockDoor();
+bool forwardPathClear(long duration[], long inches[]);
+bool leftPathClear(long duration[], long inches[]);
+bool rightPathClear(long duration[], long inches[]);
+void readSensors(long duration[], long inches[]);
+long microsecondsToInches(long microseconds);
+void moveForward(long duration[], long inches[]);
+void stopCart();
+void turnLeft();
+void turnRight();
+void turn180();
+
+void testSensors(long duration[], long inches[]);
+void moveBackwardFiveSeconds();
 
 
 void setup() {
@@ -96,6 +123,7 @@ void loop() {
       }
       Serial.println();
 
+      // Door is unlocked if unlock code is entered, locked if any other code is entered
       if (doorCodesAreEqual(entered_code, correct_code, CODE_LENGTH)) {
         Serial.println("Access granted!");
         Serial.println("Unlocking Door...");
@@ -110,17 +138,17 @@ void loop() {
         Serial.println();
       }
 
-      if (doorCodesAreEqual(entered_code, enable_program_code, CODE_LENGTH)) {
-        Serial.println("Program Started");
-        Serial.println();
-        DISABLED = false;
-      }
-      else if (doorCodesAreEqual(entered_code, disable_program_code, CODE_LENGTH)) {
+      // Software killswitch: entering the disable_program_code stops all cart movement until a new demo program is selected
+      if (doorCodesAreEqual(entered_code, disable_program_code, CODE_LENGTH)) {
         Serial.println("Program Stopped");
         Serial.println();
         DISABLED = true;
       }
-
+      else {
+        DISABLED = false;
+        current_program_code[4] = entered_code;
+      }
+      
       code_index = 0; // Reset for next entry
     }
   }
@@ -135,17 +163,21 @@ void loop() {
   long duration[4], inches[4];
   readSensors(duration, inches);
 
-  if (forwardPathClear(duration, inches)) {
-    Serial.println("Free to move");
-
-    moveForward(duration, inches);
+  if (doorCodesAreEqual(current_program_code, demo_program_codes[0], CODE_LENGTH)) {
+    leftOnDetection(duration, inches);
+  }
+  else if (doorCodesAreEqual(current_program_code, demo_program_codes[1], CODE_LENGTH)) {
+    rightOnDetection(duration, inches);
+  }
+  else if (doorCodesAreEqual(current_program_code, demo_program_codes[2], CODE_LENGTH)) {
+    stopOnDetection(duration, inches);
+  }
+  else if (doorCodesAreEqual(current_program_code, demo_program_codes[3], CODE_LENGTH)) {
+    forwardThen180(duration, inches);
   }
   else {
-    Serial.print("Object detected ");
-    Serial.print(inches[0]);
-    Serial.println("in away");
-
-    stopCart();
+    Serial.println("Invalid program/door code");
+    Serial.println();
   }
   
 }
