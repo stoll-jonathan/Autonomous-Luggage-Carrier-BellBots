@@ -4,7 +4,12 @@
 
 // GENERAL SETUP
 bool DISABLED = true;
-
+const char* demo_program_names[4] = {
+  "Left on Detection",
+  "Right on Detection",
+  "Stop on Detection",
+  "Forward then 180"
+};
 
 // KEYPAD SETUP
 const int ROW_NUM = 4;
@@ -27,7 +32,7 @@ const unsigned long TIMEOUT_MS = 2000; // allow 2 seconds between keypresses bef
 const char correct_code[CODE_LENGTH] = {'1', '9', '7', '2'}; // hardcoded for demo purposes
 const char disable_program_code[CODE_LENGTH] = {'#', '#', '#', '#'};
 const char demo_program_codes[4][CODE_LENGTH] = { {'#', 'A', '1', '1'}, {'#', 'B', '2', '2'}, {'#', 'C', '3', '3'}, {'#', 'D', '4', '4'} };
-char curr_program_code[CODE_LENGTH];
+char curr_program_code[CODE_LENGTH] = {0, 0, 0, 0};
 
 char entered_code[CODE_LENGTH];
 int code_index = 0;
@@ -37,14 +42,14 @@ unsigned long last_keypress_time = 0;
 // ULTRASONIC (PROXIMITY) SENSOR SETUP
 const int TRIGGER_PINS[4] = {36, 44, 40, 48}; // front left (from inside cart), front right (from inside cart), left (across from doors), right (doors)
 const int ECHO_PINS[4] = {37, 45, 41, 49};
-const int THRESHHOLD_INCHES = 36;
+const int THRESHOLD_INCHES = 36;
 
 
 // MOTOR SETUP
 const int DIR_PINS[2] = {8, 10}; // left, right
 const int PWM_PINS[2] = {9, 11}; // left, right
 const int turnDuration = 5000; // ms
-const int leftBaseSpeed 200;
+const int leftBaseSpeed = 200; // physical imperfection: left motor tends to run faster than right by default
 const int rightBaseSpeed = 225;
 
 
@@ -60,6 +65,7 @@ void stopOnDetection(long duration[], long inches[]);
 void forwardThen180(long duration[], long inches[]);
 
 bool doorCodesAreEqual(char code1[], char code2[], int length);
+bool isValidProgramCode(char code[]);
 void lockDoor();
 void unlockDoor();
 bool forwardPathClear(long duration[], long inches[]);
@@ -125,7 +131,6 @@ void loop() {
 
       // Door is unlocked if unlock code is entered, locked if any other code is entered
       if (doorCodesAreEqual(entered_code, correct_code, CODE_LENGTH)) {
-        Serial.println("Access granted!");
         Serial.println("Unlocking Door...");
         unlockDoor();
         Serial.println("Door Unlocked.");
@@ -144,11 +149,19 @@ void loop() {
         Serial.println();
         DISABLED = true;
       }
-      else {
+      else if (isValidProgramCode(entered_code)) {
         DISABLED = false;
-        current_program_code[4] = entered_code;
+        memcpy(curr_program_code, entered_code, CODE_LENGTH);
+
+        for (int i = 0; i < 4; i++) {
+          if (doorCodesAreEqual(entered_code, demo_program_codes[i], CODE_LENGTH)) {
+            Serial.print("Starting demo program: ");
+            Serial.println(demo_program_names[i]);
+            break;
+          }
+        }
       }
-      
+
       code_index = 0; // Reset for next entry
     }
   }
@@ -163,21 +176,17 @@ void loop() {
   long duration[4], inches[4];
   readSensors(duration, inches);
 
-  if (doorCodesAreEqual(current_program_code, demo_program_codes[0], CODE_LENGTH)) {
+  if (doorCodesAreEqual(curr_program_code, demo_program_codes[0], CODE_LENGTH)) {
     leftOnDetection(duration, inches);
   }
-  else if (doorCodesAreEqual(current_program_code, demo_program_codes[1], CODE_LENGTH)) {
+  else if (doorCodesAreEqual(curr_program_code, demo_program_codes[1], CODE_LENGTH)) {
     rightOnDetection(duration, inches);
   }
-  else if (doorCodesAreEqual(current_program_code, demo_program_codes[2], CODE_LENGTH)) {
+  else if (doorCodesAreEqual(curr_program_code, demo_program_codes[2], CODE_LENGTH)) {
     stopOnDetection(duration, inches);
   }
-  else if (doorCodesAreEqual(current_program_code, demo_program_codes[3], CODE_LENGTH)) {
+  else if (doorCodesAreEqual(curr_program_code, demo_program_codes[3], CODE_LENGTH)) {
     forwardThen180(duration, inches);
-  }
-  else {
-    Serial.println("Invalid program/door code");
-    Serial.println();
   }
   
 }
@@ -199,7 +208,7 @@ void leftOnDetection(long duration[], long inches[]) {
 
     turnLeft();
 
-    disabled = true; // return to program selection menu
+    DISABLED = true; // return to program selection menu
   }
 }
 
@@ -218,7 +227,7 @@ void rightOnDetection(long duration[], long inches[]) {
 
     turnRight();
 
-    disabled = true; // return to program selection menu
+    DISABLED = true; // return to program selection menu
   }
 }
 
@@ -237,7 +246,7 @@ void stopOnDetection(long duration[], long inches[]) {
 
     stopCart();
 
-    disabled = true; // return to program selection menu
+    DISABLED = true; // return to program selection menu
   }
 }
 
@@ -252,9 +261,8 @@ void forwardThen180(long duration[], long inches[]) {
   delay(10000);
   turn180();
 
-  disabled = true; // return to program selection menu
+  DISABLED = true; // return to program selection menu
 }
-
 
 // Helper Functions
 bool doorCodesAreEqual(char code1[], char code2[], int length) {
@@ -263,6 +271,15 @@ bool doorCodesAreEqual(char code1[], char code2[], int length) {
       return false;
   }
   return true;
+}
+
+bool isValidProgramCode(char code[]) {
+  for (int i = 0; i < 4; i++) {
+    if (doorCodesAreEqual(code, demo_program_codes[i], CODE_LENGTH)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 void lockDoor() {
@@ -292,15 +309,15 @@ void unlockDoor() {
 }
 
 bool forwardPathClear(long duration[], long inches[]) {
-  return ( (duration[0] == 0 || inches[0] > THRESHHOLD_INCHES) && (duration[1] == 0 || inches[1] > THRESHHOLD_INCHES) );
+  return ( (duration[0] == 0 || inches[0] > THRESHOLD_INCHES) && (duration[1] == 0 || inches[1] > THRESHOLD_INCHES) );
 }
 
 bool leftPathClear(long duration[], long inches[]) {
-  return (duration[2] == 0 || inches[2] > THRESHHOLD_INCHES);
+  return (duration[2] == 0 || inches[2] > THRESHOLD_INCHES);
 }
 
 bool rightPathClear(long duration[], long inches[]) {
-  return (duration[3] == 0 || inches[3] > THRESHHOLD_INCHES);
+  return (duration[3] == 0 || inches[3] > THRESHOLD_INCHES);
 }
 
 void readSensors(long duration[], long inches[]) {
@@ -335,24 +352,26 @@ void moveForward(long duration[], long inches[]) {
   
   const float GAIN = 1.0;
   const int maxRange = 96; // inches
-
+  
+  int leftSpeed, rightSpeed;
+  
   // Only correct if both sensors got a valid reading and both are within a reliable range
   if (duration[0] != 0 && duration[1] != 0 && inches[0] < maxRange && inches[1] < maxRange) {
-    int correction = constrain((inches[1] - inches[2]) * GAIN, -50, 50); // 1 = front left, 2 = front right
+    int correction = constrain((inches[1] - inches[0]) * GAIN, -50, 50); // 0 = front left, 1 = front right
 
-    int leftSpeed = constrain(leftBaseSpeed - correction, 0, 255);
-    int rightSpeed = constrain(rightBaseSpeed + correction, 0, 255);
-
-    analogWrite(PWM_PINS[0], leftSpeed);
-    analogWrite(PWM_PINS[1], rightSpeed);
+    leftSpeed = constrain(leftBaseSpeed - correction, 0, 255);
+    rightSpeed = constrain(rightBaseSpeed + correction, 0, 255);
   } 
   else {
-    analogWrite(PWM_PINS[0], leftBaseSpeed);
-    analogWrite(PWM_PINS[1], rightBaseSpeed);
+    leftSpeed = leftBaseSpeed;
+    rightSpeed = rightBaseSpeed;
   }
-
+  
   digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
   digitalWrite(DIR_PINS[1], HIGH);
+
+  analogWrite(PWM_PINS[0], leftSpeed);
+  analogWrite(PWM_PINS[1], rightSpeed);
 }
 
 void stopCart() {
@@ -409,11 +428,11 @@ void testSensors(long duration[], long inches[]) {
 }
 
 void moveBackwardFiveSeconds() {
-  analogWrite(PWM_PINS[0], leftBaseSpeed);
-  analogWrite(PWM_PINS[1], rightBaseSpeed);
-
   digitalWrite(DIR_PINS[0], LOW); // HIGH -> forward, LOW -> backward
   digitalWrite(DIR_PINS[1], LOW);
+
+  analogWrite(PWM_PINS[0], leftBaseSpeed);
+  analogWrite(PWM_PINS[1], rightBaseSpeed);
 
   delay(5000);
   stopCart();
