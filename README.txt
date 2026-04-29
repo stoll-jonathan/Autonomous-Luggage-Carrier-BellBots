@@ -1,7 +1,7 @@
-program will start when a valid program selection is entered and stop when "####" is entered
+The program will start when a valid program selection is entered and stop when "####" is entered
 
-door lock code is "1972"
-door will lock when an incorrect code is entered
+The door lock code is "1972"
+The door will lock when an incorrect code is entered
 
 There are four demo programs to choose from:
 "#A11" will run "Turn Left on Detection"
