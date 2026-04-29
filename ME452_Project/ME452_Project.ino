@@ -5,8 +5,8 @@
 // GENERAL SETUP
 bool DISABLED = true;
 const char* demo_program_names[4] = {
-  "Left on Detection",
-  "Right on Detection",
+  "Turn Left on Detection",
+  "Turn Right on Detection",
   "Stop on Detection",
   "Forward then 180"
 };
