@@ -1,0 +1,311 @@
+// BellBots Capstone Project - Autonomous Bellcart System
+
+#include <Keypad.h>
+
+// GENERAL SETUP
+bool DISABLED = true;
+
+// KEYPAD SETUP
+const int ROW_NUM = 4;
+const int COLUMN_NUM = 4;
+
+const char keys[ROW_NUM][COLUMN_NUM] = {
+  {'1','2','3', 'A'},
+  {'4','5','6', 'B'},
+  {'7','8','9', 'C'},
+  {'*','0','#', 'D'}
+};
+
+const byte row_pins[ROW_NUM] = {23, 25, 27, 29};
+const byte column_pins[COLUMN_NUM] = {22, 24, 26, 28};
+Keypad keypad = Keypad( makeKeymap(keys), row_pins, column_pins, ROW_NUM, COLUMN_NUM );
+
+const int CODE_LENGTH = 4;
+const unsigned long TIMEOUT_MS = 2000; // allow 2 seconds between keypresses before entry window resets
+
+const char correct_code[CODE_LENGTH] = {'1', '9', '7', '2'}; // hardcoded for demo purposes
+const char enable_program_code[CODE_LENGTH] = {'*', '*', '*', '*'};
+const char disable_program_code[CODE_LENGTH] = {'#', '#', '#', '#'};
+
+char entered_code[CODE_LENGTH];
+int code_index = 0;
+unsigned long last_keypress_time = 0;
+
+
+// ULTRASONIC (PROXIMITY) SENSOR SETUP
+const int TRIGGER_PINS[4] = {36, 44, 40, 48}; // front left (from inside cart), front right (from inside cart), left (across from doors), right (doors)
+const int ECHO_PINS[4] = {37, 45, 41, 49};
+const int THRESHHOLD_INCHES = 36;
+
+
+// MOTOR SETUP
+const int DIR_PINS[2] = {8, 10}; // left, right
+const int PWM_PINS[2] = {9, 11}; // left, right
+const int turnDuration = 5000; // ms
+const int leftBaseSpeed 200;
+const int rightBaseSpeed = 225;
+
+// DOOR LOCK SETUP
+bool doorLocked = false;
+const int actuatorPins[2] = {3, 4};
+
+
+void setup() {
+  Serial.begin(9600);
+
+  for (int i = 0; i < 4; i++) {
+    pinMode(TRIGGER_PINS[i], OUTPUT);
+    pinMode(ECHO_PINS[i], INPUT);
+  }
+
+  for (int i = 0; i < 2; i++) {
+    pinMode(DIR_PINS[i], OUTPUT);
+    pinMode(PWM_PINS[i], OUTPUT);
+  }
+
+  pinMode(actuatorPins[0], OUTPUT);
+  pinMode(actuatorPins[1], OUTPUT);
+
+  Serial.println("Initializing Program.");
+}
+
+void loop() {
+
+  // KEYPAD AND DOOR LOGIC
+  char key = keypad.getKey();
+
+  // Reset if too much time has passed since the last keypress
+  unsigned long now = millis();
+  if (code_index > 0 && (now - last_keypress_time) > TIMEOUT_MS) {
+    Serial.println("Timeout - restarting entry.");
+    code_index = 0;
+  }
+    
+  if (key) {
+    entered_code[code_index] = key;
+    code_index++;
+    last_keypress_time = now;
+
+    Serial.print("Key pressed: ");
+    Serial.println(key);
+
+    if (code_index == CODE_LENGTH) {
+      Serial.print("Code entered: ");
+      for (int i = 0; i < CODE_LENGTH; i++) {
+        Serial.print(entered_code[i]);
+      }
+      Serial.println();
+
+      if (doorCodesAreEqual(entered_code, correct_code, CODE_LENGTH)) {
+        Serial.println("Access granted!");
+        Serial.println("Unlocking Door...");
+        unlockDoor();
+        Serial.println("Door Unlocked.");
+        Serial.println();
+      }
+      else {
+        Serial.println("Locking Door...");
+        lockDoor();
+        Serial.println("Door Locked.");
+        Serial.println();
+      }
+
+      if (doorCodesAreEqual(entered_code, enable_program_code, CODE_LENGTH)) {
+        Serial.println("Program Started");
+        Serial.println();
+        DISABLED = false;
+      }
+      else if (doorCodesAreEqual(entered_code, disable_program_code, CODE_LENGTH)) {
+        Serial.println("Program Stopped");
+        Serial.println();
+        DISABLED = true;
+      }
+
+      code_index = 0; // Reset for next entry
+    }
+  }
+
+  
+  // SENSOR AND MOVEMENT LOGIC
+  if (DISABLED) {
+    stopCart();
+    return;
+  }
+  
+  long duration[4], inches[4];
+  readSensors(duration, inches);
+
+  if (forwardPathClear(duration, inches)) {
+    Serial.println("Free to move");
+
+    moveForward(duration, inches);
+  }
+  else {
+    Serial.print("Object detected ");
+    Serial.print(inches[0]);
+    Serial.println("in away");
+
+    stopCart();
+  }
+  
+}
+
+
+bool doorCodesAreEqual(char code1[], char code2[], int length) {
+  for (int i = 0; i < length; i++) {
+    if (code1[i] != code2[i]) 
+      return false;
+  }
+  return true;
+}
+
+void lockDoor() {
+  stopCart();
+  
+  if (!doorLocked) { // skip delay if door is already locked
+    // move actuator out
+    digitalWrite(actuatorPins[0], LOW);
+    digitalWrite(actuatorPins[1], HIGH);
+
+    delay(7000); // takes 5 seconds for actuator to extend
+  }
+  doorLocked = true;
+}
+
+void unlockDoor() {
+  stopCart();
+  
+  if (doorLocked) { // skip delay if door is already unlocked
+    // move actuator in
+    digitalWrite(actuatorPins[0], HIGH);
+    digitalWrite(actuatorPins[1], LOW);
+
+    delay(7000); // takes 5 seconds for actuator to return
+  }
+  doorLocked = false;
+}
+
+bool forwardPathClear(long duration[], long inches[]) {
+  return ( (duration[0] == 0 || inches[0] > THRESHHOLD_INCHES) && (duration[1] == 0 || inches[1] > THRESHHOLD_INCHES) );
+}
+
+bool leftPathClear(long duration[], long inches[]) {
+  return (duration[2] == 0 || inches[2] > THRESHHOLD_INCHES);
+}
+
+bool rightPathClear(long duration[], long inches[]) {
+  return (duration[3] == 0 || inches[3] > THRESHHOLD_INCHES);
+}
+
+void readSensors(long duration[], long inches[]) {
+  for (int i = 0; i < 4; i++) {
+    digitalWrite(TRIGGER_PINS[i], LOW);
+
+    delayMicroseconds(2);
+
+    digitalWrite(TRIGGER_PINS[i], HIGH);
+
+    delayMicroseconds(10);
+
+    digitalWrite(TRIGGER_PINS[i], LOW);
+
+    duration[i] = pulseIn(ECHO_PINS[i], HIGH, 6000);
+    inches[i] = microsecondsToInches(duration[i]);
+  }
+
+}
+
+long microsecondsToInches(long microseconds) {
+  // According to Parallax's datasheet for the PING))), there are 73.746
+  // microseconds per inch (i.e. sound travels at 1130 feet per second).
+  // This gives the distance travelled by the ping, outbound and return,
+  // so we divide by 2 to get the distance of the obstacle.
+  // See: https://www.parallax.com/package/ping-ultrasonic-distance-sensor-downloads/
+  return microseconds / 74 / 2;
+}
+
+void moveForward(long duration[], long inches[]) {
+  // Cart will course-correct based on differences in detected distances between the two front sensors.
+  
+  const float GAIN = 1.0;
+  const int maxRange = 96; // inches
+
+  // Only correct if both sensors got a valid reading and both are within a reliable range
+  if (duration[0] != 0 && duration[1] != 0 && inches[0] < maxRange && inches[1] < maxRange) {
+    int correction = constrain((inches[1] - inches[2]) * GAIN, -50, 50); // 1 = front left, 2 = front right
+
+    int leftSpeed = constrain(leftBaseSpeed - correction, 0, 255);
+    int rightSpeed = constrain(rightBaseSpeed + correction, 0, 255);
+
+    analogWrite(PWM_PINS[0], leftSpeed);
+    analogWrite(PWM_PINS[1], rightSpeed);
+  } 
+  else {
+    analogWrite(PWM_PINS[0], leftBaseSpeed);
+    analogWrite(PWM_PINS[1], rightBaseSpeed);
+  }
+
+  digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
+  digitalWrite(DIR_PINS[1], HIGH);
+}
+
+void stopCart() {
+  analogWrite(PWM_PINS[0], 0);
+  analogWrite(PWM_PINS[1], 0);
+}
+
+void turnLeft() {
+  // move right motor faster than the left
+  digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
+  digitalWrite(DIR_PINS[1], HIGH);
+
+  analogWrite(PWM_PINS[0], leftBaseSpeed/2);
+  analogWrite(PWM_PINS[1], rightBaseSpeed);
+
+  delay(turnDuration);
+}
+
+void turnRight() {
+  // move left motor faster than the right
+  digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
+  digitalWrite(DIR_PINS[1], HIGH);
+
+  analogWrite(PWM_PINS[0], leftBaseSpeed);   // 0–255
+  analogWrite(PWM_PINS[1], rightBaseSpeed/2);
+
+  delay(turnDuration);
+}
+
+void turn180() {
+  // move right motor faster than the left
+  digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
+  digitalWrite(DIR_PINS[1], HIGH);
+
+  analogWrite(PWM_PINS[0], leftBaseSpeed/2);
+  analogWrite(PWM_PINS[1], rightBaseSpeed);
+
+  delay(2*turnDuration);
+}
+
+
+// for testing purposes
+void testSensors(long duration[], long inches[]) {
+  readSensors(duration, inches);
+
+  Serial.println(inches[0]); // front left (from inside cart)
+  Serial.println(inches[1]); // front right (from inside cart)
+  Serial.println(inches[2]); // left (across from doors)
+  Serial.println(inches[3]); // right (doors)
+  Serial.println();
+}
+
+void moveBackwardFiveSeconds() {
+  analogWrite(PWM_PINS[0], leftBaseSpeed);
+  analogWrite(PWM_PINS[1], rightBaseSpeed);
+
+  digitalWrite(DIR_PINS[0], LOW); // HIGH -> forward, LOW -> backward
+  digitalWrite(DIR_PINS[1], LOW);
+
+  delay(5000);
+  stopCart();
+}
