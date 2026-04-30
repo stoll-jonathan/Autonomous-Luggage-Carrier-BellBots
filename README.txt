@@ -8,3 +8,4 @@ There are four demo programs to choose from:
 "#B22" will run "Turn Right on Detection"
 "#C33" will run "Stop on Detection"
 "#D44" will run "Forward then 180"
+"BBBB" will run "Move backward five seconds"

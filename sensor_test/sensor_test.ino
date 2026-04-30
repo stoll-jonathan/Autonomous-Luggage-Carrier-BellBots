@@ -4,12 +4,11 @@
 
 // GENERAL SETUP
 bool DISABLED = true;
-const char* demo_program_names[5] = {
+const char* demo_program_names[4] = {
   "Turn Left on Detection",
   "Turn Right on Detection",
   "Stop on Detection",
-  "Forward then 180",
-  "Move Backward Five Seconds"
+  "Forward then 180"
 };
 
 // KEYPAD SETUP
@@ -32,7 +31,7 @@ const unsigned long TIMEOUT_MS = 2000; // allow 2 seconds between keypresses bef
 
 const char correct_code[CODE_LENGTH] = {'1', '9', '7', '2'}; // hardcoded for demo purposes
 const char disable_program_code[CODE_LENGTH] = {'#', '#', '#', '#'};
-const char demo_program_codes[5][CODE_LENGTH] = { {'#', 'A', '1', '1'}, {'#', 'B', '2', '2'}, {'#', 'C', '3', '3'}, {'#', 'D', '4', '4'}, {'B', 'B', 'B', 'B'} };
+const char demo_program_codes[4][CODE_LENGTH] = { {'#', 'A', '1', '1'}, {'#', 'B', '2', '2'}, {'#', 'C', '3', '3'}, {'#', 'D', '4', '4'} };
 char curr_program_code[CODE_LENGTH] = {0, 0, 0, 0};
 
 char entered_code[CODE_LENGTH];
@@ -50,7 +49,7 @@ const int THRESHOLD_INCHES = 36;
 const int DIR_PINS[2] = {8, 10}; // left, right
 const int PWM_PINS[2] = {9, 11}; // left, right
 const int turnDuration = 5000; // ms
-const int leftBaseSpeed = 225; // physical imperfection: motors run at different speeds by default, these vars compensate for that
+const int leftBaseSpeed = 200; // physical imperfection: left motor tends to run faster than right by default
 const int rightBaseSpeed = 225;
 
 
@@ -104,95 +103,8 @@ void setup() {
 }
 
 void loop() {
-
-  // KEYPAD AND DOOR LOGIC
-  char key = keypad.getKey();
-
-  // Reset if too much time has passed since the last keypress
-  unsigned long now = millis();
-  if (code_index > 0 && (now - last_keypress_time) > TIMEOUT_MS) {
-    Serial.println("Timeout - restarting entry.");
-    code_index = 0;
-  }
-    
-  if (key) {
-    entered_code[code_index] = key;
-    code_index++;
-    last_keypress_time = now;
-
-    Serial.print("Key pressed: ");
-    Serial.println(key);
-
-    if (code_index == CODE_LENGTH) {
-      Serial.print("Code entered: ");
-      for (int i = 0; i < CODE_LENGTH; i++) {
-        Serial.print(entered_code[i]);
-      }
-      Serial.println();
-
-      // Door is unlocked if unlock code is entered, locked if any other code is entered
-      if (doorCodesAreEqual(entered_code, correct_code, CODE_LENGTH)) {
-        Serial.println("Unlocking Door...");
-        unlockDoor();
-        Serial.println("Door Unlocked.");
-        Serial.println();
-      }
-      else {
-        Serial.println("Locking Door...");
-        lockDoor();
-        Serial.println("Door Locked.");
-        Serial.println();
-      }
-
-      // Software killswitch: entering the disable_program_code stops all cart movement until a new demo program is selected
-      if (doorCodesAreEqual(entered_code, disable_program_code, CODE_LENGTH)) {
-        Serial.println("Program Stopped");
-        Serial.println();
-        DISABLED = true;
-      }
-      else if (isValidProgramCode(entered_code)) {
-        DISABLED = false;
-        memcpy(curr_program_code, entered_code, CODE_LENGTH);
-
-        for (int i = 0; i < 5; i++) {
-          if (doorCodesAreEqual(entered_code, demo_program_codes[i], CODE_LENGTH)) {
-            Serial.print("Starting demo program: ");
-            Serial.println(demo_program_names[i]);
-            break;
-          }
-        }
-      }
-
-      code_index = 0; // Reset for next entry
-    }
-  }
-
-  
-  // SENSOR AND MOVEMENT LOGIC
-  if (DISABLED) {
-    stopCart();
-    return;
-  }
-  
   long duration[4], inches[4];
-  readSensors(duration, inches);
-
-  if (doorCodesAreEqual(curr_program_code, demo_program_codes[0], CODE_LENGTH)) {
-    leftOnDetection(duration, inches);
-  }
-  else if (doorCodesAreEqual(curr_program_code, demo_program_codes[1], CODE_LENGTH)) {
-    rightOnDetection(duration, inches);
-  }
-  else if (doorCodesAreEqual(curr_program_code, demo_program_codes[2], CODE_LENGTH)) {
-    stopOnDetection(duration, inches);
-  }
-  else if (doorCodesAreEqual(curr_program_code, demo_program_codes[3], CODE_LENGTH)) {
-    forwardThen180(duration, inches);
-  }
-  else if (doorCodesAreEqual(curr_program_code, demo_program_codes[4], CODE_LENGTH)) {
-    moveBackwardFiveSeconds();
-  }
-  
+  testSensors(duration, inches);
 }
 
 
@@ -278,7 +190,7 @@ bool doorCodesAreEqual(char code1[], char code2[], int length) {
 }
 
 bool isValidProgramCode(char code[]) {
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < 4; i++) {
     if (doorCodesAreEqual(code, demo_program_codes[i], CODE_LENGTH)) {
       return true;
     }
@@ -289,7 +201,7 @@ bool isValidProgramCode(char code[]) {
 void lockDoor() {
   stopCart();
   
-  if (!doorLocked) { // only lock if door is currently unlocked, otherwise skip
+  if (!doorLocked) { // skip delay if door is already locked
     // move actuator out
     digitalWrite(actuatorPins[0], LOW);
     digitalWrite(actuatorPins[1], HIGH);
@@ -302,7 +214,7 @@ void lockDoor() {
 void unlockDoor() {
   stopCart();
   
-  if (doorLocked) { // only unlock if door is currently locked, otherwise skip
+  if (doorLocked) { // skip delay if door is already unlocked
     // move actuator in
     digitalWrite(actuatorPins[0], HIGH);
     digitalWrite(actuatorPins[1], LOW);
@@ -384,8 +296,6 @@ void stopCart() {
 }
 
 void turnLeft() {
-  stopCart();
-  
   // move right motor faster than the left
   digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
   digitalWrite(DIR_PINS[1], HIGH);
@@ -398,8 +308,6 @@ void turnLeft() {
 }
 
 void turnRight() {
-  stopCart();
-
   // move left motor faster than the right
   digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
   digitalWrite(DIR_PINS[1], HIGH);
