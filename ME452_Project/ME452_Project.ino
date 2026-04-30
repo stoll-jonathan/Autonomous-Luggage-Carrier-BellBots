@@ -64,6 +64,7 @@ void leftOnDetection(long duration[], long inches[]);
 void rightOnDetection(long duration[], long inches[]);
 void stopOnDetection(long duration[], long inches[]);
 void forwardThen180(long duration[], long inches[]);
+void moveBackwardFiveSeconds();
 
 bool doorCodesAreEqual(char code1[], char code2[], int length);
 bool isValidProgramCode(char code[]);
@@ -81,7 +82,7 @@ void turnRight();
 void turn180();
 
 void testSensors(long duration[], long inches[]);
-void moveBackwardFiveSeconds();
+
 
 
 void setup() {
@@ -268,6 +269,19 @@ void forwardThen180(long duration[], long inches[]) {
   DISABLED = true; // return to program selection menu
 }
 
+void moveBackwardFiveSeconds() {
+  digitalWrite(DIR_PINS[0], LOW); // HIGH -> forward, LOW -> backward
+  digitalWrite(DIR_PINS[1], LOW);
+
+  analogWrite(PWM_PINS[0], leftBaseSpeed);
+  analogWrite(PWM_PINS[1], rightBaseSpeed);
+
+  delay(5000);
+  stopCart();
+
+  DISABLED = true; // return to program selection menu
+}
+
 // Helper Functions
 bool doorCodesAreEqual(char code1[], char code2[], int length) {
   for (int i = 0; i < length; i++) {
@@ -439,15 +453,4 @@ void testSensors(long duration[], long inches[]) {
   Serial.println(inches[2]); // left (across from doors)
   Serial.println(inches[3]); // right (doors)
   Serial.println();
-}
-
-void moveBackwardFiveSeconds() {
-  digitalWrite(DIR_PINS[0], LOW); // HIGH -> forward, LOW -> backward
-  digitalWrite(DIR_PINS[1], LOW);
-
-  analogWrite(PWM_PINS[0], leftBaseSpeed);
-  analogWrite(PWM_PINS[1], rightBaseSpeed);
-
-  delay(5000);
-  stopCart();
 }
