@@ -385,6 +385,7 @@ void stopCart() {
 
 void turnLeft() {
   stopCart();
+  delay(1000);
   
   // move right motor faster than the left
   digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
@@ -399,6 +400,7 @@ void turnLeft() {
 
 void turnRight() {
   stopCart();
+  delay(1000);
 
   // move left motor faster than the right
   digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
@@ -412,6 +414,9 @@ void turnRight() {
 }
 
 void turn180() {
+  stopCart();
+  delay(1000);
+  
   // move right motor faster than the left
   digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
   digitalWrite(DIR_PINS[1], HIGH);
