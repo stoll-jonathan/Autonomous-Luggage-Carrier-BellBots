@@ -4,11 +4,12 @@
 
 // GENERAL SETUP
 bool DISABLED = true;
-const char* demo_program_names[4] = {
+const char* demo_program_names[5] = {
   "Turn Left on Detection",
   "Turn Right on Detection",
   "Stop on Detection",
-  "Forward then 180"
+  "Forward then 180",
+  "Move Backward Five Seconds"
 };
 
 // KEYPAD SETUP
@@ -31,7 +32,7 @@ const unsigned long TIMEOUT_MS = 2000; // allow 2 seconds between keypresses bef
 
 const char correct_code[CODE_LENGTH] = {'1', '9', '7', '2'}; // hardcoded for demo purposes
 const char disable_program_code[CODE_LENGTH] = {'#', '#', '#', '#'};
-const char demo_program_codes[4][CODE_LENGTH] = { {'#', 'A', '1', '1'}, {'#', 'B', '2', '2'}, {'#', 'C', '3', '3'}, {'#', 'D', '4', '4'} };
+const char demo_program_codes[5][CODE_LENGTH] = { {'#', 'A', '1', '1'}, {'#', 'B', '2', '2'}, {'#', 'C', '3', '3'}, {'#', 'D', '4', '4'}, {'B', 'B', 'B', 'B'} };
 char curr_program_code[CODE_LENGTH] = {0, 0, 0, 0};
 
 char entered_code[CODE_LENGTH];
@@ -49,8 +50,8 @@ const int THRESHOLD_INCHES = 36;
 const int DIR_PINS[2] = {8, 10}; // left, right
 const int PWM_PINS[2] = {9, 11}; // left, right
 const int turnDuration = 5000; // ms
-const int leftBaseSpeed = 200; // physical imperfection: left motor tends to run faster than right by default
-const int rightBaseSpeed = 225;
+const int leftBaseSpeed = 235; // physical imperfection: motors run at different speeds by default, these vars compensate for that
+const int rightBaseSpeed = 235;
 
 
 // DOOR LOCK SETUP
@@ -63,6 +64,7 @@ void leftOnDetection(long duration[], long inches[]);
 void rightOnDetection(long duration[], long inches[]);
 void stopOnDetection(long duration[], long inches[]);
 void forwardThen180(long duration[], long inches[]);
+void moveBackwardFiveSeconds();
 
 bool doorCodesAreEqual(char code1[], char code2[], int length);
 bool isValidProgramCode(char code[]);
@@ -80,7 +82,6 @@ void turnRight();
 void turn180();
 
 void testSensors(long duration[], long inches[]);
-void moveBackwardFiveSeconds();
 
 
 void setup() {
@@ -180,6 +181,19 @@ void forwardThen180(long duration[], long inches[]) {
   DISABLED = true; // return to program selection menu
 }
 
+void moveBackwardFiveSeconds() {
+  digitalWrite(DIR_PINS[0], LOW); // HIGH -> forward, LOW -> backward
+  digitalWrite(DIR_PINS[1], LOW);
+
+  analogWrite(PWM_PINS[0], leftBaseSpeed);
+  analogWrite(PWM_PINS[1], rightBaseSpeed);
+
+  delay(5000);
+  stopCart();
+
+  DISABLED = true; // return to program selection menu
+}
+
 // Helper Functions
 bool doorCodesAreEqual(char code1[], char code2[], int length) {
   for (int i = 0; i < length; i++) {
@@ -190,7 +204,7 @@ bool doorCodesAreEqual(char code1[], char code2[], int length) {
 }
 
 bool isValidProgramCode(char code[]) {
-  for (int i = 0; i < 4; i++) {
+  for (int i = 0; i < 5; i++) {
     if (doorCodesAreEqual(code, demo_program_codes[i], CODE_LENGTH)) {
       return true;
     }
@@ -201,7 +215,7 @@ bool isValidProgramCode(char code[]) {
 void lockDoor() {
   stopCart();
   
-  if (!doorLocked) { // skip delay if door is already locked
+  if (!doorLocked) { // only lock if door is currently unlocked, otherwise skip
     // move actuator out
     digitalWrite(actuatorPins[0], LOW);
     digitalWrite(actuatorPins[1], HIGH);
@@ -214,7 +228,7 @@ void lockDoor() {
 void unlockDoor() {
   stopCart();
   
-  if (doorLocked) { // skip delay if door is already unlocked
+  if (doorLocked) { // only unlock if door is currently locked, otherwise skip
     // move actuator in
     digitalWrite(actuatorPins[0], HIGH);
     digitalWrite(actuatorPins[1], LOW);
@@ -296,11 +310,15 @@ void stopCart() {
 }
 
 void turnLeft() {
-  // move right motor faster than the left
+  stopCart();
+  delay(1000);
+  
+  
   digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
   digitalWrite(DIR_PINS[1], HIGH);
-
-  analogWrite(PWM_PINS[0], leftBaseSpeed/2);
+  
+  // move right motor faster than the left
+  analogWrite(PWM_PINS[0], leftBaseSpeed/10);
   analogWrite(PWM_PINS[1], rightBaseSpeed);
 
   delay(turnDuration);
@@ -308,22 +326,28 @@ void turnLeft() {
 }
 
 void turnRight() {
-  // move left motor faster than the right
+  stopCart();
+  delay(1000);
+
   digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
   digitalWrite(DIR_PINS[1], HIGH);
 
+  // move left motor faster than the right
   analogWrite(PWM_PINS[0], leftBaseSpeed);   // 0–255
-  analogWrite(PWM_PINS[1], rightBaseSpeed/2);
+  analogWrite(PWM_PINS[1], rightBaseSpeed/10);
 
   delay(turnDuration);
   stopCart();
 }
 
 void turn180() {
-  // move right motor faster than the left
+  stopCart();
+  delay(1000);
+  
   digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
   digitalWrite(DIR_PINS[1], HIGH);
 
+  // move right motor faster than the left
   analogWrite(PWM_PINS[0], leftBaseSpeed/2);
   analogWrite(PWM_PINS[1], rightBaseSpeed);
 
@@ -341,15 +365,4 @@ void testSensors(long duration[], long inches[]) {
   Serial.println(inches[2]); // left (across from doors)
   Serial.println(inches[3]); // right (doors)
   Serial.println();
-}
-
-void moveBackwardFiveSeconds() {
-  digitalWrite(DIR_PINS[0], LOW); // HIGH -> forward, LOW -> backward
-  digitalWrite(DIR_PINS[1], LOW);
-
-  analogWrite(PWM_PINS[0], leftBaseSpeed);
-  analogWrite(PWM_PINS[1], rightBaseSpeed);
-
-  delay(5000);
-  stopCart();
 }
