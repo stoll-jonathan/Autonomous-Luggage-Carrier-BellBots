@@ -387,11 +387,12 @@ void turnLeft() {
   stopCart();
   delay(1000);
   
-  // move right motor faster than the left
+  
   digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
   digitalWrite(DIR_PINS[1], HIGH);
-
-  analogWrite(PWM_PINS[0], leftBaseSpeed/2);
+  
+  // move right motor faster than the left
+  analogWrite(PWM_PINS[0], leftBaseSpeed/10);
   analogWrite(PWM_PINS[1], rightBaseSpeed);
 
   delay(turnDuration);
@@ -402,12 +403,12 @@ void turnRight() {
   stopCart();
   delay(1000);
 
-  // move left motor faster than the right
   digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
   digitalWrite(DIR_PINS[1], HIGH);
 
+  // move left motor faster than the right
   analogWrite(PWM_PINS[0], leftBaseSpeed);   // 0–255
-  analogWrite(PWM_PINS[1], rightBaseSpeed/2);
+  analogWrite(PWM_PINS[1], rightBaseSpeed/10);
 
   delay(turnDuration);
   stopCart();
@@ -417,10 +418,10 @@ void turn180() {
   stopCart();
   delay(1000);
   
-  // move right motor faster than the left
   digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
   digitalWrite(DIR_PINS[1], HIGH);
 
+  // move right motor faster than the left
   analogWrite(PWM_PINS[0], leftBaseSpeed/2);
   analogWrite(PWM_PINS[1], rightBaseSpeed);
 
