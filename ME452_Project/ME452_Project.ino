@@ -50,8 +50,8 @@ const int THRESHOLD_INCHES = 36;
 const int DIR_PINS[2] = {8, 10}; // left, right
 const int PWM_PINS[2] = {9, 11}; // left, right
 const int turnDuration = 5000; // ms
-const int leftBaseSpeed = 225; // physical imperfection: motors run at different speeds by default, these vars compensate for that
-const int rightBaseSpeed = 225;
+const int leftBaseSpeed = 235; // physical imperfection: motors run at different speeds by default, these vars compensate for that
+const int rightBaseSpeed = 235;
 
 
 // DOOR LOCK SETUP
