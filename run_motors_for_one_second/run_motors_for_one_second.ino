@@ -1,9 +1,8 @@
 // BellBots Capstone Project - Autonomous Bellcart System
 
 // MOTOR SETUP
-const int DIR_PINS[2] = {8, 10}; // left, right
-const int PWM_PINS[2] = {9, 11}; // left, right
-const int turnDuration = 5000; // ms
+const int DIR_PINS[2] = {8, 10}; // right, left
+const int PWM_PINS[2] = {9, 11}; // right, lef
 
 void setup() {
   Serial.begin(9600);

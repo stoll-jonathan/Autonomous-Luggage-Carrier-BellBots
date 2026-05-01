@@ -4,11 +4,12 @@
 
 // GENERAL SETUP
 bool DISABLED = true;
-const char* demo_program_names[5] = {
-  "Turn Left on Detection",
-  "Turn Right on Detection",
+const int num_demo_programs = 5;
+const char* demo_program_names[num_demo_programs] = {
   "Stop on Detection",
-  "Forward then 180",
+  "Turn Left",
+  "Turn Right",
+  "Turn 180",
   "Move Backward Five Seconds"
 };
 
@@ -32,7 +33,7 @@ const unsigned long TIMEOUT_MS = 2000; // allow 2 seconds between keypresses bef
 
 const char correct_code[CODE_LENGTH] = {'1', '9', '7', '2'}; // hardcoded for demo purposes
 const char disable_program_code[CODE_LENGTH] = {'#', '#', '#', '#'};
-const char demo_program_codes[5][CODE_LENGTH] = { {'#', 'A', '1', '1'}, {'#', 'B', '2', '2'}, {'#', 'C', '3', '3'}, {'#', 'D', '4', '4'}, {'B', 'B', 'B', 'B'} };
+const char demo_program_codes[num_demo_programs][CODE_LENGTH] = { {'#', 'A', '1', '1'}, {'#', 'B', '2', '2'}, {'#', 'C', '3', '3'}, {'#', 'D', '4', '4'}, {'B', 'B', 'B', 'B'} };
 char curr_program_code[CODE_LENGTH] = {0, 0, 0, 0};
 
 char entered_code[CODE_LENGTH];
@@ -43,15 +44,15 @@ unsigned long last_keypress_time = 0;
 // ULTRASONIC (PROXIMITY) SENSOR SETUP
 const int TRIGGER_PINS[4] = {36, 44, 40, 48}; // front left (from inside cart), front right (from inside cart), left (across from doors), right (doors)
 const int ECHO_PINS[4] = {37, 45, 41, 49};
-const int THRESHOLD_INCHES = 36;
+const int THRESHOLD_INCHES = 12;
 
 
 // MOTOR SETUP
-const int DIR_PINS[2] = {8, 10}; // left, right
-const int PWM_PINS[2] = {9, 11}; // left, right
-const int turnDuration = 5000; // ms
-const int leftBaseSpeed = 235; // physical imperfection: motors run at different speeds by default, these vars compensate for that
-const int rightBaseSpeed = 235;
+const int DIR_PINS[2] = {8, 10}; // right, left
+const int PWM_PINS[2] = {9, 11}; // right, left
+const int turnDuration = 10000; // ms
+const int leftBaseSpeed = 230; // physical imperfection: motors run at different speeds by default, these vars compensate for that
+const int rightBaseSpeed = 230;
 
 
 // DOOR LOCK SETUP
@@ -60,10 +61,10 @@ const int actuatorPins[2] = {3, 4};
 
 
 // Function Prototypes
-void leftOnDetection(long duration[], long inches[]);
-void rightOnDetection(long duration[], long inches[]);
 void stopOnDetection(long duration[], long inches[]);
-void forwardThen180(long duration[], long inches[]);
+void demoTurnLeft();
+void demoTurnRight();
+void demoTurn180();
 void moveBackwardFiveSeconds();
 
 bool doorCodesAreEqual(char code1[], char code2[], int length);
@@ -75,14 +76,16 @@ bool leftPathClear(long duration[], long inches[]);
 bool rightPathClear(long duration[], long inches[]);
 void readSensors(long duration[], long inches[]);
 long microsecondsToInches(long microseconds);
+
 void moveForward(long duration[], long inches[]);
 void stopCart();
 void turnLeft();
 void turnRight();
 void turn180();
+void leftOnDetection(long duration[], long inches[]);
+void rightOnDetection(long duration[], long inches[]);
 
 void testSensors(long duration[], long inches[]);
-
 
 
 void setup() {
@@ -155,7 +158,7 @@ void loop() {
         DISABLED = false;
         memcpy(curr_program_code, entered_code, CODE_LENGTH);
 
-        for (int i = 0; i < 5; i++) {
+        for (int i = 0; i < num_demo_programs; i++) {
           if (doorCodesAreEqual(entered_code, demo_program_codes[i], CODE_LENGTH)) {
             Serial.print("Starting demo program: ");
             Serial.println(demo_program_names[i]);
@@ -179,16 +182,16 @@ void loop() {
   readSensors(duration, inches);
 
   if (doorCodesAreEqual(curr_program_code, demo_program_codes[0], CODE_LENGTH)) {
-    leftOnDetection(duration, inches);
-  }
-  else if (doorCodesAreEqual(curr_program_code, demo_program_codes[1], CODE_LENGTH)) {
-    rightOnDetection(duration, inches);
-  }
-  else if (doorCodesAreEqual(curr_program_code, demo_program_codes[2], CODE_LENGTH)) {
     stopOnDetection(duration, inches);
   }
+  else if (doorCodesAreEqual(curr_program_code, demo_program_codes[1], CODE_LENGTH)) {
+    demoTurnLeft();
+  }
+  else if (doorCodesAreEqual(curr_program_code, demo_program_codes[2], CODE_LENGTH)) {
+    demoTurnRight();
+  }
   else if (doorCodesAreEqual(curr_program_code, demo_program_codes[3], CODE_LENGTH)) {
-    forwardThen180(duration, inches);
+    demoTurn180();
   }
   else if (doorCodesAreEqual(curr_program_code, demo_program_codes[4], CODE_LENGTH)) {
     moveBackwardFiveSeconds();
@@ -198,44 +201,6 @@ void loop() {
 
 
 // Demonstration Programs
-void leftOnDetection(long duration[], long inches[]) {
-  // TASK: move forward until an object is detected, then turn left 90° and stop
-
-  if (forwardPathClear(duration, inches)) {
-    Serial.println("Free to move");
-
-    moveForward(duration, inches);
-  }
-  else {
-    Serial.print("Object detected ");
-    Serial.print(inches[0]);
-    Serial.println("in away");
-
-    turnLeft();
-
-    DISABLED = true; // return to program selection menu
-  }
-}
-
-void rightOnDetection(long duration[], long inches[]) {
-  // TASK: move forward until an object is detected, then turn right 90° and stop
-
-  if (forwardPathClear(duration, inches)) {
-    Serial.println("Free to move");
-
-    moveForward(duration, inches);
-  }
-  else {
-    Serial.print("Object detected ");
-    Serial.print(inches[0]);
-    Serial.println("in away");
-
-    turnRight();
-
-    DISABLED = true; // return to program selection menu
-  }
-}
-
 void stopOnDetection(long duration[], long inches[]) {
   // TASK: move forward until an object is detected, then stop
 
@@ -255,15 +220,19 @@ void stopOnDetection(long duration[], long inches[]) {
   }
 }
 
-void forwardThen180(long duration[], long inches[]) {
-  // TASK: move forward for 10 seconds, do a 180° turn, drive back, and turn 180° again
+void demoTurnLeft() {
+  turnLeft();
 
-  moveForward(duration, inches);
-  delay(10000); // ms
-  turn180();
+  DISABLED = true; // return to program selection menu
+}
 
-  moveForward(duration, inches);
-  delay(10000);
+void demoTurnRight() {
+  turnRight();
+
+  DISABLED = true; // return to program selection menu
+}
+
+void demoTurn180() {
   turn180();
 
   DISABLED = true; // return to program selection menu
@@ -282,6 +251,7 @@ void moveBackwardFiveSeconds() {
   DISABLED = true; // return to program selection menu
 }
 
+
 // Helper Functions
 bool doorCodesAreEqual(char code1[], char code2[], int length) {
   for (int i = 0; i < length; i++) {
@@ -292,7 +262,7 @@ bool doorCodesAreEqual(char code1[], char code2[], int length) {
 }
 
 bool isValidProgramCode(char code[]) {
-  for (int i = 0; i < 5; i++) {
+  for (int i = 0; i < num_demo_programs; i++) {
     if (doorCodesAreEqual(code, demo_program_codes[i], CODE_LENGTH)) {
       return true;
     }
@@ -365,6 +335,8 @@ long microsecondsToInches(long microseconds) {
   return microseconds / 74 / 2;
 }
 
+
+// Movement Programs
 void moveForward(long duration[], long inches[]) {
   // Cart will course-correct based on differences in detected distances between the two front sensors.
   
@@ -401,12 +373,11 @@ void turnLeft() {
   stopCart();
   delay(1000);
   
-  
   digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
-  digitalWrite(DIR_PINS[1], HIGH);
+  digitalWrite(DIR_PINS[1], LOW);
   
-  // move right motor faster than the left
-  analogWrite(PWM_PINS[0], leftBaseSpeed/10);
+  // move motors opposite directions
+  analogWrite(PWM_PINS[0], leftBaseSpeed);
   analogWrite(PWM_PINS[1], rightBaseSpeed);
 
   delay(turnDuration);
@@ -417,12 +388,12 @@ void turnRight() {
   stopCart();
   delay(1000);
 
-  digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
+  digitalWrite(DIR_PINS[0], LOW); // HIGH -> forward, LOW -> backward
   digitalWrite(DIR_PINS[1], HIGH);
 
-  // move left motor faster than the right
-  analogWrite(PWM_PINS[0], leftBaseSpeed);   // 0–255
-  analogWrite(PWM_PINS[1], rightBaseSpeed/10);
+  // move motors in opposite directions
+  analogWrite(PWM_PINS[0], leftBaseSpeed);
+  analogWrite(PWM_PINS[1], rightBaseSpeed);
 
   delay(turnDuration);
   stopCart();
@@ -432,15 +403,49 @@ void turn180() {
   stopCart();
   delay(1000);
   
-  digitalWrite(DIR_PINS[0], HIGH); // HIGH -> forward, LOW -> backward
+  digitalWrite(DIR_PINS[0], LOW); // HIGH -> forward, LOW -> backward
   digitalWrite(DIR_PINS[1], HIGH);
 
   // move right motor faster than the left
-  analogWrite(PWM_PINS[0], leftBaseSpeed/2);
+  analogWrite(PWM_PINS[0], leftBaseSpeed);
   analogWrite(PWM_PINS[1], rightBaseSpeed);
 
   delay(2*turnDuration);
   stopCart();
+}
+
+void leftOnDetection(long duration[], long inches[]) {
+  // TASK: move forward until an object is detected, then turn left 90° and stop
+
+  if (forwardPathClear(duration, inches)) {
+    Serial.println("Free to move");
+
+    moveForward(duration, inches);
+  }
+  else {
+    Serial.print("Object detected ");
+    Serial.print(inches[0]);
+    Serial.println("in away");
+
+    turnLeft();
+  }
+}
+
+void rightOnDetection(long duration[], long inches[]) {
+  // TASK: move forward until an object is detected, then turn right 90° and stop
+
+  if (forwardPathClear(duration, inches)) {
+    Serial.println("Free to move");
+
+    moveForward(duration, inches);
+  }
+  else {
+    Serial.print("Object detected ");
+    Serial.print(inches[0]);
+    Serial.println("in away");
+
+    turnRight();
+  }
 }
 
 
