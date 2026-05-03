@@ -10,7 +10,7 @@
 
 The BellBot autonomous luggage system addresses two pressing challenges in the hotel industry: guest luggage security and bell service operational cost. A guest checks in, their luggage is loaded into BellBot and secured via an electronic locking system, and the cart autonomously navigates to the guest's room, arriving ready to meet them.
 
-With a projected unit cost of ~$2,500, BellBot offers a compelling alternative to the ongoing labor cost of human bell staff.
+With a projected unit cost of ~$2500, BellBot offers a compelling alternative to the ongoing labor cost of human bell staff.
 
 ---
 
@@ -19,7 +19,7 @@ With a projected unit cost of ~$2,500, BellBot offers a compelling alternative t
 BellBot is controlled by an Arduino running a C++ autonomy stack. At the core of the system:
 
 - A **keypad interface** handles guest authentication and program selection
-- **Ultrasonic sensors** provide obstacle detection to stop the cart safely if something enters its path
+- An array of **Ultrasonic sensors** provide obstacle detection to stop the cart safely if something enters its path
 - An **electronic locking mechanism** secures the luggage compartment until the correct code is entered at the destination
 - A **motor controller** interfaces between the Arduino and the drive system, translating autonomy commands into wheel movement
 
@@ -49,8 +49,8 @@ The system ships with five navigation programs selectable via keypad at startup.
 |-----------|---------|-------------|
 | `1972` | Unlock Door | Electronic lock retracts. Compartment can be locked again with any four digits which are not already a stated input code. |
 | `#A11` | Stop on Detection | Cart advances until an obstacle is detected by the ultrasonic sensors, then halts |
-| `#B22` | Turn Left | Executes a calibrated left turn |
-| `#C33` | Turn Right | Executes a calibrated right turn |
+| `#B22` | Turn Left | Executes a calibrated 90° left turn |
+| `#C33` | Turn Right | Executes a calibrated 90° right turn |
 | `#D44` | Turn 180 | Executes a full calibrated 180° turn |
 | `BBBB` | Move Backward | Reverses for five seconds |
 
@@ -62,9 +62,9 @@ Enter `####` at any time to stop the current program.
 
 | Component | Role |
 |-----------|------|
-| Arduino | Main computer and autonomy controller |
+| Arduino Mega | Main computer and autonomy controller |
 | Ultrasonic sensors | Obstacle detection |
-| Keypad | Guest authentication and program selection |
+| Matrix Keypad | Guest authentication and program selection |
 | Electronic lock | Luggage compartment security |
 | Motor controller | Drive system interface |
 
@@ -81,7 +81,7 @@ BellBot was a senior capstone project completed by a team of 5 Mechanical Engine
 | Jonathan Stoll | Electronics, sensor integration, autonomy software |
 | Colton Hope | Drive system design, housing fabrication |
 | Tyler Swanson | 3D CAD models and design drawings, housing fabrication |
-| Pedro Lecuga | Housing fabrication |
+| Pedro Lechuga | Housing fabrication |
 | Terrance Silva | Design document preparation and presentation of final design |
 
 ---
