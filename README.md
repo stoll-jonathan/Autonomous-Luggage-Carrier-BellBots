@@ -82,7 +82,7 @@ BellBot was a senior capstone project completed by a team of 5 Mechanical Engine
 | Colton Hope | Drive system design, housing fabrication |
 | Tyler Swanson | 3D CAD models and design drawings, housing fabrication |
 | Pedro Lechuga | Housing fabrication |
-| Terrance Silva | Design document preparation and presentation of final design |
+| Terrance Silva | Design document preparation, presentation of final design |
 
 ---
 
