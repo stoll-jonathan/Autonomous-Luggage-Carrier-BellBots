@@ -64,7 +64,7 @@ Enter `####` at any time to stop the current program.
 |-----------|------|
 | Arduino Mega | Main computer and autonomy controller |
 | Ultrasonic sensors | Obstacle detection |
-| Matrix Keypad | Guest authentication and program selection |
+| Matrix keypad | Guest authentication and program selection |
 | Electronic lock | Luggage compartment security |
 | Motor controller | Drive system interface |
 
