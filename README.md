@@ -19,7 +19,7 @@ With a projected unit cost of ~$2500, BellBot offers a compelling alternative to
 BellBot is controlled by an Arduino running a C++ autonomy stack. At the core of the system:
 
 - A **keypad interface** handles guest authentication and program selection
-- An array of **Ultrasonic sensors** provide obstacle detection to stop the cart safely if something enters its path
+- An array of **ultrasonic sensors** provide obstacle detection to stop the cart safely if something enters its path
 - An **electronic locking mechanism** secures the luggage compartment until the correct code is entered at the destination
 - A **motor controller** interfaces between the Arduino and the drive system, translating autonomy commands into wheel movement
 
